@@ -1,5 +1,6 @@
 from typing import Union
 
+from near.constants import DEFAULT_TIMEOUT
 from near.method import Method
 from near.providers.http import AsyncHTTPProvider, HTTPProvider
 from near.types import RPC, YoctoNEAR
@@ -12,8 +13,8 @@ class NearMethodsMixin:
 
 
 class Near(NearMethodsMixin):
-    def __init__(self, endpoint_uri: str) -> None:
-        self.provider = HTTPProvider(endpoint_uri)
+    def __init__(self, endpoint_uri: str, timeout: int = DEFAULT_TIMEOUT) -> None:
+        self.provider = HTTPProvider(endpoint_uri, timeout)
 
     def gas_price(self, block_identifier: Union[int, str, None] = None) -> YoctoNEAR:
         return self._gas_price(block_identifier)
@@ -23,8 +24,8 @@ class Near(NearMethodsMixin):
 
 
 class AsyncNear(NearMethodsMixin):
-    def __init__(self, endpoint_uri: str) -> None:
-        self.provider = AsyncHTTPProvider(endpoint_uri)
+    def __init__(self, endpoint_uri: str, timeout: int = DEFAULT_TIMEOUT) -> None:
+        self.provider = AsyncHTTPProvider(endpoint_uri, timeout)
 
     async def gas_price(
         self, block_identifier: Union[int, str, None] = None

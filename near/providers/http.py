@@ -13,7 +13,7 @@ from near.types import RPC, RPCEndpoint, RPCResponse
 
 
 class HTTPProvider(BaseSyncJSONProvider):
-    def __init__(self, endpoint_uri: str, timeout: int = DEFAULT_TIMEOUT) -> None:
+    def __init__(self, endpoint_uri: str, timeout: int) -> None:
         self.endpoint_uri = endpoint_uri
         self.timeout = timeout
         super().__init__()
@@ -36,7 +36,7 @@ class HTTPProvider(BaseSyncJSONProvider):
 
 
 class AsyncHTTPProvider(BaseAsyncJSONProvider):
-    def __init__(self, endpoint_uri: str, timeout: int = DEFAULT_TIMEOUT) -> None:
+    def __init__(self, endpoint_uri: str, timeout) -> None:
         self.endpoint_uri: str = endpoint_uri
         self.timeout = timeout
         self._session = None
