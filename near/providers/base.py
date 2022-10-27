@@ -42,7 +42,7 @@ class BaseJSONProvider:
     def handle_response(self, response: RPCResponse) -> None:
         error = response.get("error")
         if error:
-            raise ERRORS_BIND[error["name"]](error)
+            raise ERRORS_BIND[error["cause"]["name"]](error)
 
 
 class BaseSyncJSONProvider(BaseJSONProvider, BaseSyncProvider):
