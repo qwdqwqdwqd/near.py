@@ -24,7 +24,19 @@ class HandlerError(RPCError):
     ...
 
 
+class RequestValidationError(RPCError):
+    ...
+
+
 class UnknownBlockError(HandlerError):
+    ...
+
+
+class ParseError(RequestValidationError):
+    ...
+
+
+class InternalError(RPCError):
     ...
 
 
@@ -32,5 +44,7 @@ ERRORS_BIND: DefaultDict[str, Type[RPCError]] = defaultdict(
     lambda: RPCError,
     {
         "UNKNOWN_BLOCK": UnknownBlockError,
+        "PARSE_ERROR": ParseError,
+        "INTERNAL_ERROR": InternalError,
     },
 )
