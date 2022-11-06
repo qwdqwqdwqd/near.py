@@ -3,38 +3,39 @@ from typing import (
     Awaitable,
     Callable,
     Generic,
-    ParamSpec,
     Type,
     TypeVar,
     cast,
     overload,
 )
 
-from near.types import RPCEndpoint
+from near.types import ResultSchemaT, RPCEndpoint
 
 if TYPE_CHECKING:
     from near.main import AsyncNear, Near
 
 
-R = TypeVar("R")
-P = ParamSpec("P")
+ResultT = TypeVar("ResultT")
+ParamsT = TypeVar("ParamsT")
 
 
-class Method(Generic[P, R]):
+class Method(Generic[ParamsT, ResultT]):
     def __init__(
         self,
-        json_rpc_method: RPCEndpoint,
-        result_key: str,
+        base_method: RPCEndpoint,
+        result_schema: Type[ResultSchemaT],
+        result_formatter: Callable[[ResultSchemaT], ResultT],
     ):
-        self.json_rpc_method = json_rpc_method
-        self.result_key = result_key
+        self.result_schema = result_schema
+        self.base_method = base_method
+        self.result_formatter = result_formatter
 
     @overload
     def __get__(
         self,
         obj: "Near",
         obj_type: Type["Near"],
-    ) -> Callable[P, R]:
+    ) -> Callable[[ParamsT], ResultT]:
         ...
 
     @overload
@@ -42,35 +43,32 @@ class Method(Generic[P, R]):
         self,
         obj: "AsyncNear",
         obj_type: Type["AsyncNear"],
-    ) -> Callable[P, Awaitable[R]]:
+    ) -> Callable[[ParamsT], Awaitable[ResultT]]:
         ...
 
     def __get__(
         self,
         obj: "Near | AsyncNear",
         obj_type: Type["Near"] | Type["AsyncNear"],
-    ) -> Callable[P, R] | Callable[P, Awaitable[R]]:
+    ) -> Callable[[ParamsT], ResultT] | Callable[[ParamsT], Awaitable[ResultT]]:
         from near.main import AsyncNear, Near
 
         if isinstance(obj, Near):
 
-            def caller(*args: P.args, **kwargs: P.kwargs) -> R:
-
-                response = cast(Near, obj).provider.post(
-                    self.json_rpc_method, params=[*args]
+            def caller(params: ParamsT) -> ResultT:
+                response = cast(Near, obj).provider.call_rpc(
+                    self.base_method, params, self.result_schema
                 )
-                result = response["result"][self.result_key]
-                return cast(R, result)
+                return self.result_formatter(response)
 
             return caller
         elif isinstance(obj, AsyncNear):
 
-            async def async_caller(*args: P.args, **kwargs: P.kwargs) -> R:
-                response = await cast(AsyncNear, obj).provider.post(
-                    self.json_rpc_method, params=[*args]
+            async def async_caller(params: ParamsT) -> ResultT:
+                response = await cast(AsyncNear, obj).provider.call_rpc(
+                    self.base_method, params, self.result_schema
                 )
-                result = response["result"][self.result_key]
-                return cast(R, result)
+                return self.result_formatter(response)
 
             return async_caller
         else:

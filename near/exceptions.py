@@ -4,7 +4,7 @@ from typing import DefaultDict, Type
 from near.types import RPCError as RPCErrorDict
 
 
-class BadResponseError(IOError):
+class RPCError(IOError):
     def __init__(self, msg: str) -> None:
         self.msg = msg
 
@@ -12,19 +12,23 @@ class BadResponseError(IOError):
         return self.msg
 
 
-class RPCError(IOError):
+class BadResponseError(RPCError):
+    ...
+
+
+class RPCStandardError(RPCError):
     def __init__(self, error: RPCErrorDict) -> None:
         self.error = error
 
     def __str__(self) -> str:
-        return f"{self.error['message']}: {self.error['data']}"
+        return f"{self.error.message}: {self.error.data}"
 
 
-class HandlerError(RPCError):
+class HandlerError(RPCStandardError):
     ...
 
 
-class RequestValidationError(RPCError):
+class RequestValidationError(RPCStandardError):
     ...
 
 
@@ -36,12 +40,21 @@ class ParseError(RequestValidationError):
     ...
 
 
-class InternalError(RPCError):
+class InternalError(RPCStandardError):
     ...
 
 
-ERRORS_BIND: DefaultDict[str, Type[RPCError]] = defaultdict(
-    lambda: RPCError,
+class AccessKeyDoesNotExist(RPCError):
+    ...
+
+
+ERROR_MESSAGES_BIND = {
+    "^access key .*? does not exist while viewing$": AccessKeyDoesNotExist
+}
+
+
+ERRORS_BIND: DefaultDict[str, Type[RPCStandardError]] = defaultdict(
+    lambda: RPCStandardError,
     {
         "UNKNOWN_BLOCK": UnknownBlockError,
         "PARSE_ERROR": ParseError,

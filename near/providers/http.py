@@ -1,15 +1,14 @@
 import asyncio
 import atexit
 from json import JSONDecodeError
-from typing import Any, cast
+from typing import Any, Type
 
 import requests
 from aiohttp import ClientSession
 
-from near.constants import DEFAULT_TIMEOUT
 from near.exceptions import BadResponseError
 from near.providers.base import BaseAsyncJSONProvider, BaseSyncJSONProvider
-from near.types import RPC, RPCEndpoint, RPCResponse
+from near.types import RPC, ResultSchemaT, RPCEndpoint
 
 
 class HTTPProvider(BaseSyncJSONProvider):
@@ -18,17 +17,19 @@ class HTTPProvider(BaseSyncJSONProvider):
         self.timeout = timeout
         super().__init__()
 
-    def post(self, method: RPCEndpoint, params: Any) -> RPCResponse:
+    def post(self, method: RPCEndpoint, params: Any) -> dict:
         payload = self.encode_rpc_request(method, params)
         response = requests.post(self.endpoint_uri, json=payload, timeout=self.timeout)
         try:
-            response_json = response.json()
+            return response.json()
         except requests.exceptions.JSONDecodeError:
             raise BadResponseError("Couldn't decode the response into json")
 
-        result = cast(RPCResponse, response_json)
-        self.handle_response(result)
-        return result
+    def call_rpc(
+        self, method: RPCEndpoint, params: Any, result_schema: Type[ResultSchemaT]
+    ) -> ResultSchemaT:
+        response_dict = self.post(method, params)
+        return self.get_result(response_dict, result_schema)
 
     def is_connected(self) -> bool:
         result = self.post(RPC.status, [])
@@ -54,7 +55,7 @@ class AsyncHTTPProvider(BaseAsyncJSONProvider):
         if self._session:
             asyncio.run(self.session.close())
 
-    async def post(self, method: RPCEndpoint, params: Any) -> RPCResponse:
+    async def post(self, method: RPCEndpoint, params: Any) -> dict:
         payload = self.encode_rpc_request(method, params)
         async with self.session.post(
             self.endpoint_uri,
@@ -62,13 +63,15 @@ class AsyncHTTPProvider(BaseAsyncJSONProvider):
             timeout=self.timeout,
         ) as response:
             try:
-                result = await response.json(content_type=None)
+                return await response.json(content_type=None)
             except JSONDecodeError:
                 raise BadResponseError("Couldn't decode the response into json")
 
-            result = cast(RPCResponse, result)
-            self.handle_response(result)
-            return result
+    async def call_rpc(
+        self, method: RPCEndpoint, params: Any, result_schema: Type[ResultSchemaT]
+    ) -> ResultSchemaT:
+        response_dict = await self.post(method, params)
+        return self.get_result(response_dict, result_schema)
 
     async def is_connected(self) -> bool:
         result = await self.post(RPC.status, [])
